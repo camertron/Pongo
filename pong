@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# first find which PHP binary to use
+if test "/usr/local/bin/php" = '@'php_bin'@'; then
+    PHP=php 
+else
+    PHP="/usr/bin/php"
+fi
+
+LOC=`dirname $0`
+CUR=`pwd`
+
+exec $PHP $LOC/core/Pongo.php $CUR $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14} ${15}

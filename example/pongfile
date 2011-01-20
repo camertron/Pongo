@@ -1,0 +1,11 @@
+{"my_server":
+	{"ssh_host":"1.1.1.1",
+	 "ssh_port":"22",
+	 "ssh_username":"root"
+	},
+ "my_server2":
+	{"ssh_host":"2.2.2.2",
+	 "ssh_port":22,
+	 "ssh_username":"root"
+	}
+}
