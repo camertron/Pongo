@@ -1,0 +1,14 @@
+To install pcntl:
+
+1. Download the most recent PHP source from www.php.net into /usr/local (or wherever you want) and extract it.  I used PHP version 5.3.3.  If you're on a system with aptitude, make a php directory, cd into it, and run apt-get source php5.
+2. cd /usr/local/php5.3xxxx/ext/pcntl
+3. phpize
+4. ./configure
+5. make (don't run make install - it doesn't seem to work)
+6. Copy the newly minted modules/pcntl.so file into your PHP extensions directory
+   MacOS (Snow Leopard): cp modules/pcntl.so /usr/lib/php/extensions/no-debug-non-zts-20090626/
+   Other *nix: cp modules/pcntl.so /usr/lib/php5/WHEREVER_YOUR_SO_FILES_ARE/
+7. Tell php you've just installed a new extension
+   Mac OS: Locate your php.ini file.  It didn't exist on my system, but /etc/private/php.ini.default did.  Ignore the .default one and create your own php.ini file.  Put this inside it: "extension=pcntl.so"
+   Other *nix: put "extension=pcntl.so" into /etc/php5/conf.d/pcntl.ini
+8. You're done!

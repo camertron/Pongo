@@ -1,44 +1,58 @@
 Pongo At-A-Glance Documentation
 
+(For the impatient, a code example exists in the examples/ folder).
+
 Requirements:
 1. A *nix based system (Ubuntu/Debian, Mac OS, etc).  Windows is not supported.
 2. The Process Control (pcntl) PHP extension
-3. 
 
 Pongo is an application deployment framework written in PHP.  It tries to mimic much of the now well-established Capistrano feel by providing some of the same commands.  For example, deploying your web application is as simple as running:
 
 pong production deploy
 
-Installation is also simple:
+Installation:
 
+0. Install pcntl.
 1. Clone the Pongo git repository and place the files into a directory like /usr/lib.
-2. Add /usr/lib/Pongo to your bash profile.
+2. Add /usr/lib/pongo to your $PATH.
 3. You can now execute commands using the "pong" command.
 
-To install pcntl (not so simple!):
+Basic Usage
 
-1. Download the most recent PHP source into /usr/local and extract it.  I used PHP version 5.3.3.  If you're on a system with aptitude, make a php directory, cd into it, and run apt-get source php5.
-2. cd /usr/local/php5.3xxxx/ext/pcntl
-3. phpize
-4. ./configure
-5. make (don't run make install - it doesn't seem to work)
-6. Copy the newly minted modules/pcntl.so file into your PHP extensions directory
-   MacOS (Snow Leopard): cp modules/pcntl.so /usr/lib/php/extensions/no-debug-non-zts-20090626/
-   Other *nix: cp modules/pcntl.so /usr/lib/php5/WHEREVER_YOUR_SO_FILES_ARE/
-7. Tell php you've just installed a new extension
-   Mac OS: Locate your php.ini file.  It didn't exist on my system, but /etc/private/php.ini.default did.  Ignore the .default one and create your own php.ini file.  Put this inside it: "extension=pcntl.so"
-   Other *nix: put "extension=pcntl.so" into /etc/php5/conf.d/pcntl.ini
-8. You're done!
+To start deploying a new project, you'll need to create a pongfile (analogous to a capfile).  The pongfile should exist in the same directory as your deployment scripts.  To create a basic pongfile, cd into your deploy directory and run the following command to generate your pongfile:
 
-Ok, now that everything's installed, here's how it all works:
+pong pongify
+
+Pongfiles contain a json object that specifies your server details.  You'll want to edit this file by replacing the dummy strings with ones that pertain to your servers.  The semantic names you specify will be how you refer to your servers during the deploy process.  You can add as many servers to this file as you want.
+
+{"semantic name of production server":
+	{"ssh_host": "www.production.com",
+	 "ssh_port": "22",
+	 "ssh_username": "my_production_user"
+	},
+	
+	"semantic name of staging server":
+	{"ssh_host": "www.staging.com",
+	 "ssh_port": "22",
+	 "ssh_username": "my_staging_user"
+	},
+	
+	"semantic name of testing server":
+	{"ssh_host": "www.testing.com",
+	 "ssh_port": "22",
+	 "ssh_username": "my_testing_user"
+	}
+}
 
 Pongo expects certain things to be present in each command line string.  After "pong" should come the name of a deploy file followed by the action you want to perform.  For example, running "pong production deploy" instructs Pongo to execute the deploy() function inside production.php.  This means you can execute any user-defined function - deploy() is simply the most common.  Let's take a look inside the production.php deploy script.
 
 All Pongo deploy scripts contain a class that inherits from the Deployer base class.  Deployer.php can be found in the core/ directory.  You'll need to include it, then create a derived class.
 
-include_once("/usr/local/pongo/core/Deployer.php");
+include_once("/usr/lib/pongo/core/Deployer.php");
 
 class ProductionDeployer extends Deployer {
+	public $server_list = array("production");
+
 	public function deploy() {
 		//do some cool deploying by running commands on the remote machine(s)
 		$this->do_something_else();
@@ -53,3 +67,45 @@ $deployer = new ProductionDeployer();
 
 Pay special attention to the last line above.  Each Pongo deploy script requires that an instance of the deployer be available as the variable $deployer.  That way, when Pongo includes your deploy script, it will have access to an instance of your deployer.
 
+Like Capistrano, Pongo is capable of deploying to multiple servers simultaneously.  Just override the $server_list variable and add the (semantic) names of the servers you want this script to deploy to.  Deploys to multiple servers are asynchronous and done in separate threads.
+
+The next step is to fill in your method stubs with commands that will be executed on the remote server.  You can execute commands directly using the Deployer class's run() function or ask one of Pongo's predefined modules to do the work for you.  Modules are added to the current list of commands using the Deployer class's add_module() function.  The order in which you call add_module() and run() will be the order in which commands are executed on the remote server.  Let's say you want to deploy code that exists in a Subversion repository.  You'll need to import the Svn module, make an instance of it, supply parameters, then add it using add_module():
+
+//include Svn module
+$this->include_module("scm/Svn");
+
+//create instance of module
+$svn = new Svn();
+
+//configure the module instance
+$svn->command = "export";  //could also be "checkout", "update", whatever else you want (export doesn't include those hidden .svn directories)
+$svn->protocol = SvnProtocol::SVN_SSH;
+$svn->username = "user";
+$svn->repo_url = "server.com/repos/my_repo";
+$svn->dest_path = "/var/www";
+$svn->regulate = true;  //appends to dest_path a directory named with the current timestamp, then symlinks it to a directory named "current"
+$svn->use_sudo = true;
+$svn->actions[] = "deploy";  //call the deploy function of this module
+
+//add the module
+$this->add_module($svn);
+
+Each module instance contains a series of supported functions.  The Svn module has two: deploy() and install().  Use install() to run an aptitude package install of the Subversion binaries and deploy() to deploy the repository to (a) remote server(s).
+
+The "regulate" option offers seamless deployment by instructing Subversion to export all your source code into a folder named after the current timestamp (almost guaranteed to be unique).  When the export has finished, a symlink is created between the timestamp folder and a folder named "current," which is where your web server should be serving from.  In the example above, code from the repository would end up in a directory like /var/www/147285712.  Apache (or whatever web server software you have running) should be serving from /var/www/current, which is symlinked to /var/www/147285712.  Magical.
+
+A Subversion deploy like the one above is probably going to be at the heart of your deploy process, however the Svn module doesn't come with all the features you might need.  You can always extend core/modules/scm/Svn.php and make your own custom Svn module or write your own module entirely.  You can also execute the commands yourself using Deployer's run() function.  (Ooo what a perfect segue!)  The run() equivalent of the module above would be:
+
+$this->run("sudo mkdir /var/www/147285712");
+$this->run("sudo chmod 777 /var/www/147285712");
+$this->run("sudo svn export svn+ssh://user@server.com/repos/my_repo /var/www/147285712");
+$this->run("sudo ln -s /var/www/147285712 /var/www/current");
+
+Each successive call to run() will add a command to the final list of commands.
+
+And that's it!  Run pong production deploy to execute your deploy script.  Pongo will prompt your for your SSH password, then start to execute the commands you specified on the remote server(s).  To distinguish simultaneous output from multiple servers, each line of output is prepended with "[semantic server name]".
+
+Some assumptions:
+1. You use the same password for all your servers.
+2. You don't require interactive access to the terminal (no manual password entering).  You'll probably need to set up some keys.
+3. You know your way around PHP.

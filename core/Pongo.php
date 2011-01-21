@@ -18,8 +18,8 @@ require_once("Net/SSH2.php");
 # This is the main driver script for Pongo
 # usage: pong [path] distribution function, i.e. pong production deploy OR pong ~/myproject/pong production deploy
 //process command
-if (count($argv) > 1) {
-    switch ($argv[1]) {
+if (count($argv) >= 2) {
+    switch ($argv[2]) {
         case "pongify":
             pongify($argv);
             break;
