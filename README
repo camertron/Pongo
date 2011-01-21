@@ -1,0 +1,55 @@
+Pongo At-A-Glance Documentation
+
+Requirements:
+1. A *nix based system (Ubuntu/Debian, Mac OS, etc).  Windows is not supported.
+2. The Process Control (pcntl) PHP extension
+3. 
+
+Pongo is an application deployment framework written in PHP.  It tries to mimic much of the now well-established Capistrano feel by providing some of the same commands.  For example, deploying your web application is as simple as running:
+
+pong production deploy
+
+Installation is also simple:
+
+1. Clone the Pongo git repository and place the files into a directory like /usr/lib.
+2. Add /usr/lib/Pongo to your bash profile.
+3. You can now execute commands using the "pong" command.
+
+To install pcntl (not so simple!):
+
+1. Download the most recent PHP source into /usr/local and extract it.  I used PHP version 5.3.3.  If you're on a system with aptitude, make a php directory, cd into it, and run apt-get source php5.
+2. cd /usr/local/php5.3xxxx/ext/pcntl
+3. phpize
+4. ./configure
+5. make (don't run make install - it doesn't seem to work)
+6. Copy the newly minted modules/pcntl.so file into your PHP extensions directory
+   MacOS (Snow Leopard): cp modules/pcntl.so /usr/lib/php/extensions/no-debug-non-zts-20090626/
+   Other *nix: cp modules/pcntl.so /usr/lib/php5/WHEREVER_YOUR_SO_FILES_ARE/
+7. Tell php you've just installed a new extension
+   Mac OS: Locate your php.ini file.  It didn't exist on my system, but /etc/private/php.ini.default did.  Ignore the .default one and create your own php.ini file.  Put this inside it: "extension=pcntl.so"
+   Other *nix: put "extension=pcntl.so" into /etc/php5/conf.d/pcntl.ini
+8. You're done!
+
+Ok, now that everything's installed, here's how it all works:
+
+Pongo expects certain things to be present in each command line string.  After "pong" should come the name of a deploy file followed by the action you want to perform.  For example, running "pong production deploy" instructs Pongo to execute the deploy() function inside production.php.  This means you can execute any user-defined function - deploy() is simply the most common.  Let's take a look inside the production.php deploy script.
+
+All Pongo deploy scripts contain a class that inherits from the Deployer base class.  Deployer.php can be found in the core/ directory.  You'll need to include it, then create a derived class.
+
+include_once("/usr/local/pongo/core/Deployer.php");
+
+class ProductionDeployer extends Deployer {
+	public function deploy() {
+		//do some cool deploying by running commands on the remote machine(s)
+		$this->do_something_else();
+	}
+	
+	public function do_something_else() {
+		//execute some other commands on the remote machine(s)
+	}
+}
+
+$deployer = new ProductionDeployer();
+
+Pay special attention to the last line above.  Each Pongo deploy script requires that an instance of the deployer be available as the variable $deployer.  That way, when Pongo includes your deploy script, it will have access to an instance of your deployer.
+
