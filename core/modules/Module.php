@@ -10,7 +10,7 @@
 
         //echo command (can't be named echo because that's a PHP reserved word)
         public function echo_c($string) {
-            return new Command("echo '" . $string . "'");
+            $this->run(new Command("echo '" . $string . "'"));
         }
 
         public function get_sudo() {
